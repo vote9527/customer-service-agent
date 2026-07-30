@@ -1,0 +1,36 @@
+# LangChain
+langchain
+langchain-core
+langchain-openai
+
+
+# LangGraph
+langgraph
+
+
+# RAG
+chromadb
+faiss-cpu
+sentence-transformers
+
+
+# API
+fastapi
+uvicorn
+
+
+# UI
+streamlit
+
+
+# Config
+python-dotenv
+
+
+# Utils
+pydantic
+rich
+
+
+# Test
+pytest

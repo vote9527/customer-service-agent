@@ -1,0 +1,22 @@
+.env
+
+__pycache__/
+
+*.pyc
+
+
+# vector database
+
+data/vector_db/
+
+
+# IDE
+
+.vscode/
+
+.idea/
+
+
+# logs
+
+*.log
