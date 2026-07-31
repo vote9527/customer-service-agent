@@ -1,26 +1,53 @@
-from langgraph.graph import(
+from langgraph.graph import (
     StateGraph,
     START,
-    END
 )
-import graph
+
+from langgraph.prebuilt import (
+    ToolNode,
+    tools_condition,
+)
+
 from graph.state import CustomerState
+from graph.nodes import agent_node
 
-from graph.nodes import(
-    intent_node,
-    agent_node
-)
+from tools import TOOLS
 
-def create_customer_graph():
+
+def build_graph():
+
     graph = StateGraph(
         CustomerState
     )
-    # add node
-    graph.add_node("intent",intent_node)
-    graph.add_node("agent",agent_node)
-    # add edge
-    graph.add_edge(START,"intent")
-    graph.add_edge("intent","agent")
-    graph.add_edge("agent",END)
+
+    # Agent
+    graph.add_node(
+        "agent",
+        agent_node
+    )
+
+    # Tools
+    graph.add_node(
+        "tools",
+        ToolNode(TOOLS)
+    )
+
+    # START → Agent
+    graph.add_edge(
+        START,
+        "agent"
+    )
+
+    # Agent → Tools / END
+    graph.add_conditional_edges(
+        "agent",
+        tools_condition
+    )
+
+    # Tools → Agent
+    graph.add_edge(
+        "tools",
+        "agent"
+    )
+
     return graph.compile()
-    

@@ -1,29 +1,40 @@
-from graph.workflow import create_customer_graph
-from langchain_core.messages import HumanMessage, content
+from graph.workflow import build_graph
+from langchain_core.messages import HumanMessage
+
+
+app = build_graph()
 
 
 def main():
-    app = create_customer_graph()
-    result = app.invoke(
-    {
-        "messages":[
-            HumanMessage(
-                content="我要退款"
-            )
-        ],
 
-        "user_id":"001",
+    print("企业客服 Agent 启动")
 
-        "intent":None,
+    while True:
 
-        "tool_result":None,
+        user_input = input("\n用户：").strip()
 
-        "final_answer":None
-    }      
-    )
-    print(result["final_answer"])
-    
+        if user_input.lower() in [
+            "quit",
+            "exit",
+            "退出",
+        ]:
+            break
+
+        result = app.invoke(
+            {
+                "messages": [
+                    HumanMessage(
+                        content=user_input
+                    )
+                ]
+            }
+        )
+
+        print(
+            "客服：",
+            result["messages"][-1].content
+        )
+
 
 if __name__ == "__main__":
     main()
-    
