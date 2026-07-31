@@ -9,8 +9,9 @@ langgraph
 
 
 # RAG
+langchain-community
+langchain-huggingface
 chromadb
-faiss-cpu
 sentence-transformers
 
 
