@@ -2,6 +2,7 @@ from rag.loader import load_documents
 from rag.splitter import split_documents
 from rag.embeddings import get_embeddings
 from rag.vectorstore import create_vectorstore
+from rag.retriever import get_retriever
 
 
 # 1. 加载原始文档
@@ -20,12 +21,8 @@ db = create_vectorstore(
 )
 
 # 5. 创建 Retriever
-# 只返回最相似的 2 个 Chunk
-retriever = db.as_retriever(
-    search_kwargs={
-        "k": 1
-    }
-)
+# 只返回最相似的 X 个 Chunk
+retriever = get_retriever(db)
 
 # 6. 执行检索
 docs = retriever.invoke(

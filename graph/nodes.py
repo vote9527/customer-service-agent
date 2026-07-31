@@ -55,6 +55,7 @@ def agent_node(
 你可以使用以下工具：
 
 - search_faq：查询 FAQ
+- search_policy：查询企业政策知识库
 - check_order：查询订单
 - submit_complaint：提交投诉
 
@@ -74,6 +75,18 @@ def agent_node(
    根据工具返回结果向用户提供最终回答。
 
 6. 保持专业、友好的客服语气。
+
+严格规则：
+
+1. 企业政策问题必须调用search_policy。
+
+2. 回答政策问题时，
+只能使用工具返回的信息。
+
+3. 如果工具没有提供信息，
+明确告诉用户知识库没有相关内容。
+
+4. 禁止使用自己的常识补充企业政策。
                 """
             )
         ] + messages
