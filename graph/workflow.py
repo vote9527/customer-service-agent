@@ -10,7 +10,7 @@ from langgraph.prebuilt import (
 
 from graph.state import CustomerState
 from graph.nodes import agent_node
-
+from graph.memory import memory
 from tools import TOOLS
 
 
@@ -50,4 +50,6 @@ def build_graph():
         "agent"
     )
 
-    return graph.compile()
+    return graph.compile(
+        checkpointer=memory
+    )

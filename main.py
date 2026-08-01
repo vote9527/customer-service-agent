@@ -5,13 +5,22 @@ from langchain_core.messages import HumanMessage
 app = build_graph()
 
 
+config = {
+    "configurable": {
+        "thread_id": "user_001"
+    }
+}
+
+
 def main():
 
     print("企业客服 Agent 启动")
 
+
     while True:
 
         user_input = input("\n用户：").strip()
+
 
         if user_input.lower() in [
             "quit",
@@ -20,6 +29,7 @@ def main():
         ]:
             break
 
+
         result = app.invoke(
             {
                 "messages": [
@@ -27,8 +37,10 @@ def main():
                         content=user_input
                     )
                 ]
-            }
+            },
+            config=config
         )
+
 
         print(
             "客服：",
