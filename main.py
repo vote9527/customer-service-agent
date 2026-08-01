@@ -26,6 +26,8 @@ def main():
 
         user_input = input("\n用户：").strip()
 
+        if not user_input:
+            continue
 
         if user_input.lower() in [
             "quit",

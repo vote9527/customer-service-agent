@@ -1,10 +1,21 @@
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import SystemMessage
-from langchain_core.messages import AIMessage
+
+from langchain_core.messages import (
+    SystemMessage,
+)
 
 from graph.state import CustomerState
-from config.settings import DASHSCOPE_API_KEY,BASE_URL,MODEL_NAME,TEMPERATURE,RAG_TOP_K
+
+from config.settings import (
+    DASHSCOPE_API_KEY,
+    BASE_URL,
+    MODEL_NAME,
+    TEMPERATURE,
+)
+
 from tools import TOOLS
+
+from utils.trace import AgentTracer
 
 
 llm = ChatOpenAI(
@@ -15,88 +26,130 @@ llm = ChatOpenAI(
 )
 
 
-# LLM 绑定工具
-llm_with_tools = llm.bind_tools(TOOLS)
+llm_with_tools = llm.bind_tools(
+    TOOLS
+)
+
+
+SYSTEM_PROMPT = """
+
+你是一个企业智能客服 Agent。
+
+
+你的职责：
+
+1. 解答用户产品问题
+2. 查询 FAQ
+3. 查询订单
+4. 查询企业政策
+5. 提交售后投诉
+
+
+你可以使用：
+
+- search_faq
+- search_policy
+- check_order
+- submit_complaint
+
+
+规则：
+
+1.
+可以通过工具获取的信息，必须调用工具。
+
+
+2.
+禁止编造订单信息。
+
+
+3.
+禁止编造企业政策。
+
+
+4.
+投诉问题必须调用 submit_complaint。
+
+
+5.
+工具返回后，根据工具结果回答。
+
+
+6.
+保持专业客服语气。
+
+
+严格要求：
+
+退款、售后、保修、优惠、支付等问题：
+必须调用 search_policy。
+
+
+回答政策问题：
+只能使用工具返回内容。
+
+
+知识库没有内容：
+明确说明。
+
+
+"""
 
 
 def agent_node(
     state: CustomerState
-) -> dict:
-    """
-    Agent 核心节点
+):
 
-    负责：
-    1. 获取当前对话消息
-    2. 调用 LLM
-    3. 根据用户需求决定是否调用工具
-    """
+    tracer = AgentTracer()
 
-    messages = state["messages"]
+    
 
-    # 如果当前消息中没有 SystemMessage
-    # 则添加系统提示词
-    if not any(
-        isinstance(message, SystemMessage)
-        for message in messages
-    ):
 
-        messages = [
-            SystemMessage(
-                content="""
-你是一个企业智能客服 Agent。
+    try:
 
-你的职责：
+        messages = list(
+            state["messages"]
+        )
+        tracer.start(
+            node="agent_node",
+            input=messages[-1].content
+        )
 
-1. 解答用户的产品和服务问题
-2. 查询 FAQ
-3. 查询订单
-4. 提交投诉
+        # 添加 System Prompt
 
-你可以使用以下工具：
-
-- search_faq：查询 FAQ
-- search_policy：查询企业政策知识库
-- check_order：查询订单
-- submit_complaint：提交投诉
-
-工作规则：
-
-1. 如果用户的问题可以通过工具获取信息，
-   优先调用工具。
-
-2. 不要编造订单信息。
-
-3. 不要编造 FAQ 内容。
-
-4. 如果需要提交投诉，
-   必须调用 submit_complaint。
-
-5. 工具执行完成后，
-   根据工具返回结果向用户提供最终回答。
-
-6. 保持专业、友好的客服语气。
-
-严格规则：
-
-1. 有关退款、售后、保修、优惠、支付等问题必须调用search_policy。
-
-2. 回答政策问题时，
-只能使用工具返回的信息。
-
-3. 如果工具没有提供信息，
-明确告诉用户知识库没有相关内容。
-
-4. 禁止使用自己的常识补充企业政策。
-                """
+        if not any(
+            isinstance(
+                m,
+                SystemMessage
             )
-        ] + messages
+            for m in messages
+        ):
 
-    # 调用 LLM
-    response = llm_with_tools.invoke(
-        messages
-    )
+            messages.insert(
+                0,
+                SystemMessage(
+                    content=SYSTEM_PROMPT
+                )
+            )
 
-    # 返回 State 更新
-    return {
-        "messages": [response]
-    }
+
+        response = (
+            llm_with_tools
+            .invoke(messages)
+        )
+
+        tracer.end(
+            response.content
+        )
+        return {
+            "messages":[
+                response
+            ]
+        }
+
+
+    except Exception as e:
+        tracer.end(f"ERROR: {e}")
+        raise
+
+        

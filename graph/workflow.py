@@ -14,11 +14,13 @@ from graph.memory import memory
 from tools import TOOLS
 
 
+
 def build_graph():
 
     graph = StateGraph(
         CustomerState
     )
+
 
     # Agent
     graph.add_node(
@@ -26,29 +28,31 @@ def build_graph():
         agent_node
     )
 
+
     # Tools
     graph.add_node(
         "tools",
         ToolNode(TOOLS)
     )
 
-    # START → Agent
+
     graph.add_edge(
         START,
         "agent"
     )
 
-    # Agent → Tools / END
+
     graph.add_conditional_edges(
         "agent",
         tools_condition
     )
 
-    # Tools → Agent
+
     graph.add_edge(
         "tools",
         "agent"
     )
+
 
     return graph.compile(
         checkpointer=memory
