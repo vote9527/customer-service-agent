@@ -17,5 +17,22 @@ MODEL_NAME = os.getenv(
 
 
 BASE_URL = os.getenv(
-    "BASE_URL"
+    "BASE_URL",
+    "https://dashscope.aliyuncs.com/compatible-mode/v1"
 )
+
+TEMPERATURE = float(
+    os.getenv(
+        "TEMPERATURE",
+        0.7
+    )
+)
+
+
+RAG_TOP_K = int(
+    os.getenv(
+        "RAG_TOP_K",
+        1
+    )
+)
+

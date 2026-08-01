@@ -3,15 +3,15 @@ from langchain_core.messages import SystemMessage
 from langchain_core.messages import AIMessage
 
 from graph.state import CustomerState
-from config.settings import DASHSCOPE_API_KEY
+from config.settings import DASHSCOPE_API_KEY,BASE_URL,MODEL_NAME,TEMPERATURE,RAG_TOP_K
 from tools import TOOLS
 
 
 llm = ChatOpenAI(
-    model="qwen-plus",
-    temperature=0.7,
+    model=MODEL_NAME,
+    temperature=TEMPERATURE,
     api_key=DASHSCOPE_API_KEY,
-    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+    base_url=BASE_URL
 )
 
 
@@ -78,7 +78,7 @@ def agent_node(
 
 严格规则：
 
-1. 企业政策问题必须调用search_policy。
+1. 有关退款、售后、保修、优惠、支付等问题必须调用search_policy。
 
 2. 回答政策问题时，
 只能使用工具返回的信息。
