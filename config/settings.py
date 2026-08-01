@@ -28,6 +28,9 @@ TEMPERATURE = float(
     )
 )
 
+HF_TOKEN=os.getenv(
+    "HF_TOKEN"
+)
 
 RAG_TOP_K = int(
     os.getenv(
