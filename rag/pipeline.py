@@ -3,8 +3,9 @@ from rag.splitter import split_documents
 from rag.embeddings import get_embeddings
 from rag.vectorstore import create_vectorstore
 from rag.retriever import get_retriever
+from functools import lru_cache
 
-
+@lru_cache()
 def build_retriever():
 
     docs = load_documents()

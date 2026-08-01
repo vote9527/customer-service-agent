@@ -1,10 +1,22 @@
+import os
 import logging
+
+
+os.makedirs(
+    "logs",
+    exist_ok=True
+)
 
 
 logging.basicConfig(
     filename="logs/agent.log",
     level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    format=(
+        "%(asctime)s "
+        "%(levelname)s "
+        "%(name)s "
+        "%(message)s"
+    ),
     encoding="utf-8"
 )
 
@@ -19,18 +31,18 @@ logger.setLevel(
 )
 
 
-# 降低第三方库日志等级
+# 第三方库降噪
 
-logging.getLogger(
-    "httpx"
-).setLevel(logging.WARNING)
+for name in [
+    "httpx",
+    "sentence_transformers",
+    "transformers",
+    "huggingface_hub",
+    "urllib3"
+]:
 
-
-logging.getLogger(
-    "sentence_transformers"
-).setLevel(logging.WARNING)
-
-
-logging.getLogger(
-    "transformers"
-).setLevel(logging.WARNING)
+    logging.getLogger(
+        name
+    ).setLevel(
+        logging.WARNING
+    )
