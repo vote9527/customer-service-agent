@@ -2,6 +2,7 @@ from langchain_openai import ChatOpenAI
 
 from langchain_core.messages import (
     SystemMessage,
+    ToolMessage
 )
 
 from graph.state import CustomerState
@@ -19,7 +20,7 @@ from utils.trace import AgentTracer
 from utils.logger import logger
 
 from skills.loader import load_skills
-from skills.router import select_skill
+from .harness import AgentHarness
 
 
 # =========================
@@ -34,18 +35,21 @@ llm = ChatOpenAI(
 )
 
 
-# 绑定工具
-
 llm_with_tools = llm.bind_tools(
     TOOLS
 )
 
 
 # =========================
-# Skill Loader
+# Skill Runtime
 # =========================
 
 skills = load_skills()
+
+
+harness = AgentHarness(
+    skills
+)
 
 
 logger.info(
@@ -62,14 +66,14 @@ Loaded Skills:
 
 
 # =========================
-# Base System Prompt
+# Base Prompt
 # =========================
 
 BASE_PROMPT = """
 
 你是企业智能客服 Agent。
 
-你的职责：
+职责：
 
 1. 解答用户产品问题
 2. 查询 FAQ
@@ -78,18 +82,19 @@ BASE_PROMPT = """
 5. 提交售后投诉
 
 
-工作规则：
+规则：
 
 1.
-必须根据当前 Skill 执行业务流程。
+必须遵守当前 Skill 的流程。
 
 
 2.
-工具返回的信息才能用于回答。
+Skill 要求调用工具时，
+必须调用工具。
 
 
 3.
-禁止编造企业政策。
+只能使用工具返回的信息。
 
 
 4.
@@ -97,7 +102,7 @@ BASE_PROMPT = """
 
 
 5.
-如果需要查询信息，必须调用对应工具。
+禁止编造企业政策。
 
 
 6.
@@ -119,108 +124,166 @@ def agent_node(
 
     try:
 
-        # 获取消息
-
         messages = list(
             state["messages"]
         )
 
+
         last_message = messages[-1]
-        
-        if last_message.type == "tool":
-            user_query = ""
-        else: 
-            user_query = (last_message.content)
+
+
+        # =====================
+        # 判断执行阶段
+        # =====================
+
+        is_tool_result=isinstance(
+            last_message,
+            ToolMessage
+        )
+
+
+        if is_tool_result:
+
+            user_query = None
+
+        else:
+
+            user_query = last_message.content
+
 
 
         tracer.start(
             node="agent_node",
-            input=user_query
+            input=(
+                user_query
+                if user_query
+                else "TOOL_RESULT"
+            )
         )
 
 
         # =====================
-        # Skill Router
+        # Skill处理
         # =====================
+
+        current_skill = state.get(
+            "current_skill"
+        )
+
+
         if user_query:
-            skill = select_skill(user_query,skills)
-        else:
-            skill = ""
 
 
-        if skill:
+            # 用户第一次进入
+            # 选择Skill
 
-            skill_prompt = (
-                skill["content"]
+            context = harness.prepare(
+                user_query
             )
 
 
-            logger.info(
-                f"""
-========== SKILL LOADED ==========
-
-Skill:
-
-{skill["name"]}
+            if context["skill"]:
 
 
-Prompt:
+                current_skill = (
+                    context["skill"]["name"]
+                )
 
-{skill_prompt}
+
+                skill_prompt = (
+                    context["prompt"]
+                )
 
 
-===================================
-"""
-            )
+            else:
+
+                skill_prompt=""
 
 
         else:
 
-            skill_prompt = ""
+
+            # Tool返回阶段
+            # 不重新Router
+
+            if current_skill:
 
 
-            logger.warning(
-                f"""
-========== NO SKILL ==========
+                skill_prompt = skills.get(
+                    current_skill,
+                    {}
+                ).get(
+                    "content",
+                    ""
+                )
 
-Query:
-{user_query}
 
-==============================
+                logger.info(
+                    f"""
+========== TOOL RESULT ==========
+
+Reuse Skill:
+
+{current_skill}
+
+==================================
 """
-            )
+                )
+
+
+            else:
+
+                skill_prompt=""
+
+
+                logger.warning(
+                    """
+========== TOOL RESULT ==========
+No Current Skill
+================================
+"""
+                )
+
 
 
         # =====================
-        # Dynamic System Prompt
+        # System Prompt
         # =====================
 
         system_prompt = (
+
             BASE_PROMPT
+
             +
+
             """
 
 当前业务 Skill:
 
 """
+
             +
+
             skill_prompt
+
         )
 
 
         # =====================
-        # 关键修复:
         # 删除旧 SystemMessage
-        # 防止 Memory 保存旧 Skill
         # =====================
 
         messages = [
+
             m
+
             for m in messages
+
             if not isinstance(
                 m,
                 SystemMessage
             )
+
         ]
 
 
@@ -232,8 +295,9 @@ Query:
         )
 
 
+
         # =====================
-        # LLM + Tool Calling
+        # LLM
         # =====================
 
         response = (
@@ -242,16 +306,30 @@ Query:
         )
 
 
+
         tracer.end(
             response.content
         )
 
 
+        # =====================
+        # 更新State
+        # =====================
+
         return {
+
             "messages":[
                 response
-            ]
+            ],
+
+            "current_skill":
+                current_skill,
+                
+             "skill_prompt":
+                skill_prompt
+
         }
+
 
 
     except Exception as e:

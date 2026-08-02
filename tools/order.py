@@ -24,5 +24,5 @@ def check_order(order_id: str) -> str:
     order = orders.get(order_id)
 
     if order:
-        return json.dumps(orders,ensure_ascii=False)
+        return json.dumps(order,ensure_ascii=False)
     return f"订单 {order_id} 不存在，请检查订单号。"
