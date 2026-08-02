@@ -16,7 +16,15 @@ from config.settings import (
 from tools import TOOLS
 
 from utils.trace import AgentTracer
+from utils.logger import logger
 
+from skills.loader import load_skills
+from skills.router import select_skill
+
+
+# =========================
+# LLM
+# =========================
 
 llm = ChatOpenAI(
     model=MODEL_NAME,
@@ -26,15 +34,40 @@ llm = ChatOpenAI(
 )
 
 
+# 绑定工具
+
 llm_with_tools = llm.bind_tools(
     TOOLS
 )
 
 
-SYSTEM_PROMPT = """
+# =========================
+# Skill Loader
+# =========================
 
-你是一个企业智能客服 Agent。
+skills = load_skills()
 
+
+logger.info(
+    f"""
+========== SKILL LOADER ==========
+
+Loaded Skills:
+
+{list(skills.keys())}
+
+===================================
+"""
+)
+
+
+# =========================
+# Base System Prompt
+# =========================
+
+BASE_PROMPT = """
+
+你是企业智能客服 Agent。
 
 你的职责：
 
@@ -45,22 +78,14 @@ SYSTEM_PROMPT = """
 5. 提交售后投诉
 
 
-你可以使用：
-
-- search_faq
-- search_policy
-- check_order
-- submit_complaint
-
-
-规则：
+工作规则：
 
 1.
-可以通过工具获取的信息，必须调用工具。
+必须根据当前 Skill 执行业务流程。
 
 
 2.
-禁止编造订单信息。
+工具返回的信息才能用于回答。
 
 
 3.
@@ -68,33 +93,22 @@ SYSTEM_PROMPT = """
 
 
 4.
-投诉问题必须调用 submit_complaint。
+禁止编造订单信息。
 
 
 5.
-工具返回后，根据工具结果回答。
+如果需要查询信息，必须调用对应工具。
 
 
 6.
 保持专业客服语气。
 
-
-严格要求：
-
-退款、售后、保修、优惠、支付等问题：
-必须调用 search_policy。
-
-
-回答政策问题：
-只能使用工具返回内容。
-
-
-知识库没有内容：
-明确说明。
-
-
 """
 
+
+# =========================
+# Agent Node
+# =========================
 
 def agent_node(
     state: CustomerState
@@ -102,45 +116,137 @@ def agent_node(
 
     tracer = AgentTracer()
 
-    
-
 
     try:
+
+        # 获取消息
 
         messages = list(
             state["messages"]
         )
+
+        last_message = messages[-1]
+        
+        if last_message.type == "tool":
+            user_query = ""
+        else: 
+            user_query = (last_message.content)
+
+
         tracer.start(
             node="agent_node",
-            input=messages[-1].content
+            input=user_query
         )
 
-        # 添加 System Prompt
 
-        if not any(
-            isinstance(
+        # =====================
+        # Skill Router
+        # =====================
+        if user_query:
+            skill = select_skill(user_query,skills)
+        else:
+            skill = ""
+
+
+        if skill:
+
+            skill_prompt = (
+                skill["content"]
+            )
+
+
+            logger.info(
+                f"""
+========== SKILL LOADED ==========
+
+Skill:
+
+{skill["name"]}
+
+
+Prompt:
+
+{skill_prompt}
+
+
+===================================
+"""
+            )
+
+
+        else:
+
+            skill_prompt = ""
+
+
+            logger.warning(
+                f"""
+========== NO SKILL ==========
+
+Query:
+{user_query}
+
+==============================
+"""
+            )
+
+
+        # =====================
+        # Dynamic System Prompt
+        # =====================
+
+        system_prompt = (
+            BASE_PROMPT
+            +
+            """
+
+当前业务 Skill:
+
+"""
+            +
+            skill_prompt
+        )
+
+
+        # =====================
+        # 关键修复:
+        # 删除旧 SystemMessage
+        # 防止 Memory 保存旧 Skill
+        # =====================
+
+        messages = [
+            m
+            for m in messages
+            if not isinstance(
                 m,
                 SystemMessage
             )
-            for m in messages
-        ):
+        ]
 
-            messages.insert(
-                0,
-                SystemMessage(
-                    content=SYSTEM_PROMPT
-                )
+
+        messages.insert(
+            0,
+            SystemMessage(
+                content=system_prompt
             )
+        )
 
+
+        # =====================
+        # LLM + Tool Calling
+        # =====================
 
         response = (
             llm_with_tools
             .invoke(messages)
         )
 
+
         tracer.end(
             response.content
         )
+
+
         return {
             "messages":[
                 response
@@ -149,7 +255,11 @@ def agent_node(
 
 
     except Exception as e:
-        tracer.end(f"ERROR: {e}")
-        raise
 
-        
+
+        tracer.end(
+            f"ERROR:{e}"
+        )
+
+
+        raise

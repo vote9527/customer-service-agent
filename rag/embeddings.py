@@ -1,5 +1,5 @@
 from langchain_huggingface import HuggingFaceEmbeddings
-
+from config.settings import HF_TOKEN
 
 def get_embeddings():
 
@@ -7,7 +7,8 @@ def get_embeddings():
         model_name=
         "BAAI/bge-small-zh-v1.5",
         model_kwargs={
-        "device":"cpu"
+        "device":"cpu",
+        "token":HF_TOKEN
         },
     )
 
