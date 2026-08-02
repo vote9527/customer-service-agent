@@ -1,68 +1,56 @@
 from utils.logger import logger
 
 
-def select_skill(
-    query: str,
-    skills: dict
-):
+def select_skill(query, skills):
 
     query = query.lower()
 
 
+    # 1. 投诉优先
     if any(
-        keyword in query
-        for keyword in [
-            "退款",
-            "退货",
-            "退款怎么办",
-            "申请退款",
-            "售后"
+        word in query
+        for word in [
+            "投诉",
+            "申诉",
+            "举报"
         ]
     ):
 
-        skill_name = "refund_skill"
+        skill="complaint_skill"
 
 
-
+    # 2. 退款售后
     elif any(
-        keyword in query
-        for keyword in [
+        word in query
+        for word in [
+            "退款",
+            "退货",
+            "售后",
+            "换货"
+        ]
+    ):
+
+        skill="refund_skill"
+
+
+    # 3. 订单物流
+    elif any(
+        word in query
+        for word in [
             "订单",
             "物流",
             "发货",
-            "快递",
-            "什么时候到",
-            "多久到"
+            "配送"
         ]
     ):
 
-        skill_name = "order_skill"
-
-
-
-    elif any(
-        keyword in query
-        for keyword in [
-            "投诉",
-            "举报",
-            "客服态度",
-            "物流异常"
-        ]
-    ):
-
-        skill_name = "complaint_skill"
-
+        skill="order_skill"
 
 
     else:
 
-        skill_name = "default_skill"
+        skill="default_skill"
 
-
-
-    skill = skills.get(
-        skill_name
-    )
 
 
     logger.info(
@@ -73,11 +61,11 @@ User Query:
 {query}
 
 Selected Skill:
-{skill_name}
+{skill}
 
 ==================================
 """
     )
 
 
-    return skill
+    return skills.get(skill)

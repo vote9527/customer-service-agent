@@ -1,0 +1,18 @@
+[
+    {
+        "input":"我要退款",
+        "expected_skill":"refund_skill"
+    },
+    {
+        "input":"查询订单 ORD-12345678",
+        "expected_skill":"order_skill"
+    },
+    {
+        "input":"我要投诉物流",
+        "expected_skill":"complaint_skill"
+    },
+    {
+        "input":"你好",
+        "expected_skill":"default_skill"
+    }
+]
